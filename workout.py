@@ -2,7 +2,11 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter.simpledialog import askstring
 from tkinter import simpledialog, messagebox
+from tkcalendar import DateEntry
 import json
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
 
 app = tk.Tk()
 app.title("Fitness Tracker")
@@ -42,7 +46,7 @@ duration_entry.grid(row=4, column=1, pady=(0, 10))
 # Date submission
 date_label = tk.Label(app, text="Date:")
 date_label.grid(row=5, column=1)
-date_entry = tk.Entry(app)
+date_entry = DateEntry(app, date_pattern="yyyy-mm-dd")
 date_entry.grid(row=6, column=1)
 
 
@@ -139,9 +143,56 @@ def save_exercise_types(exercise_types):
 settings_button = tk.Button(app, text="Settings", command=open_settings)
 settings_button.grid(row=2, column=1, pady=(0, 10))
 
+
+def show_chart():
+    chart_window = tk.Toplevel(app)
+    chart_window.title("Chart")
+    chart_window.geometry("430x300")
+
+    fig, ax = plt.subplots(figsize=(2, 1))
+    canvas = FigureCanvasTkAgg(fig, master=chart_window)
+    canvas_widget = canvas.get_tk_widget()
+
+    def update_chart_view():
+        ax.clear()
+        exercise_data = {}
+        for workout in workout_data:
+            date = workout["date"]
+            exercise_type = workout["exercise_type"]
+            amount = workout["amount"]
+            unit = workout["unit"]
+            if date not in exercise_data:
+                exercise_data[date] = {}
+            exercise_data[date][exercise_type] = exercise_data[date].get(
+                exercise_type, 0
+            ) + float(amount)
+
+        for exercise_type, data in exercise_data.items():
+            dates = list(data.keys())
+            values = [data[date] for date in dates]
+            ax.plot(dates, values, marker="o", label=exercise_type)
+
+        ax.set_xlabel("Date")
+        ax.set_ylabel("Amount")
+        ax.legend()
+
+        canvas.get_tk_widget().configure(
+            width=chart_window.winfo_width(), height=chart_window.winfo_height()
+        )
+        canvas.draw()
+
+    update_chart_view()
+
+    canvas_widget.pack(fill=tk.BOTH, expand=True)
+
+
+# Button to activate the chart
+chart_view_button = tk.Button(app, text="See Chart", command=show_chart)
+chart_view_button.grid(row=0, column=2)
+
 # Display the workouts saved
 workout_listbox = tk.Listbox(app, height=10, width=45)
-workout_listbox.grid(row=0, column=2, rowspan=7, sticky="nsew")
+workout_listbox.grid(row=1, column=2, rowspan=7, sticky="nsew")
 
 
 # Load data (upon opening)
@@ -154,6 +205,7 @@ def load_workout_data():
 
 
 workout_data = load_workout_data()
+
 
 # Display previous data
 for workout in workout_data:
@@ -217,9 +269,17 @@ def add_workout():
 add_workout_button = tk.Button(app, text="Add Workout", command=add_workout)
 add_workout_button.grid(row=7, column=1)
 remove_workout_button = tk.Button(app, text="Remove Workout", command=remove_workout)
-remove_workout_button.grid(row=7, column=2, pady=15)
+remove_workout_button.grid(row=8, column=2, pady=15)
 
 final_message = tk.Label(app, text="More updates to come!")
 final_message.grid(row=10, column=1, columnspan=2)
+
+
+# Kill the process on closing
+def on_closing():
+    app.quit()
+
+
+app.protocol("WM_DELETE_WINDOW", on_closing)
 
 app.mainloop()
