@@ -6,6 +6,8 @@ from tkcalendar import DateEntry
 import json
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from dateutil import parser
+from collections import defaultdict
 
 
 app = tk.Tk()
@@ -27,7 +29,7 @@ def load_exercise_types():
             return json.load(file)
     except FileNotFoundError:
         return {
-            "Running": "minutes",
+            "Jogging": "miles",
             "Pushups": "repetitions",
         }
 
@@ -67,7 +69,7 @@ def open_settings():
         if new_exercise:
             unit = askstring(
                 "Unit",
-                f"Enter the unit for '{new_exercise}' (e.g., minutes, repetitions):",
+                f"Enter the unit for '{new_exercise}' (e.g., miles, repetitions):",
             )
             if unit:
                 options[new_exercise] = unit
@@ -144,46 +146,75 @@ settings_button = tk.Button(app, text="Settings", command=open_settings)
 settings_button.grid(row=2, column=1, pady=(0, 10))
 
 
+# Popout window that graphs the workouts by type
 def show_chart():
     chart_window = tk.Toplevel(app)
     chart_window.title("Chart")
-    chart_window.geometry("430x300")
+    chart_window.geometry("600x500")
 
-    fig, ax = plt.subplots(figsize=(2, 1))
-    canvas = FigureCanvasTkAgg(fig, master=chart_window)
-    canvas_widget = canvas.get_tk_widget()
+    # Select the exercise type
+    chart_type_label = tk.Label(chart_window, text="Select Exercise Type:")
+    chart_type_label.pack()
+    chart_type_var = tk.StringVar()
+    chart_type_menu = ttk.Combobox(
+        chart_window,
+        textvariable=chart_type_var,
+        values=list(options.keys()),
+        state="readonly",
+    )
+    chart_type_menu.pack(pady=(0, 10))
+    chart_type_menu.set("Jogging")
 
-    def update_chart_view():
+    # Load and add workouts by type
+    exercise_data = defaultdict(list)
+    for workout in workout_data:
+        date = parser.parse(workout["date"])
+        exercise_type = workout["exercise_type"]
+        amount = float(workout["amount"])
+        exercise_data[exercise_type].append((date, amount))
+
+    fig, ax = plt.subplots(figsize=(6, 4))
+
+    # Plot/update chart
+    def update_chart():
+        selected_type = chart_type_var.get()
         ax.clear()
-        exercise_data = {}
-        for workout in workout_data:
-            date = workout["date"]
-            exercise_type = workout["exercise_type"]
-            amount = workout["amount"]
-            unit = workout["unit"]
-            if date not in exercise_data:
-                exercise_data[date] = {}
-            exercise_data[date][exercise_type] = exercise_data[date].get(
-                exercise_type, 0
-            ) + float(amount)
+        if selected_type in exercise_data:
+            data_points = exercise_data[selected_type]
+            dates, amounts = zip(*data_points)
+            if len(data_points) < 2:
+                # Add an empty list for x-axis labels when there are fewer than two workouts
+                plt.plot([], [], label=selected_type)
+                ax.text(
+                    0.5,
+                    0.5,
+                    "At least 2 workouts of this type are required",
+                    fontsize=12,
+                    ha="center",
+                    va="center",
+                )
+            else:
+                plt.plot(dates, amounts, label=selected_type)
 
-        for exercise_type, data in exercise_data.items():
-            dates = list(data.keys())
-            values = [data[date] for date in dates]
-            ax.plot(dates, values, marker="o", label=exercise_type)
-
+        # The text of the graph like axis lables and legends
         ax.set_xlabel("Date")
         ax.set_ylabel("Amount")
-        ax.legend()
+        ax.set_title(f"Your {selected_type} Over Time")
+        ax.legend(loc="upper left")
 
-        canvas.get_tk_widget().configure(
-            width=chart_window.winfo_width(), height=chart_window.winfo_height()
-        )
         canvas.draw()
 
-    update_chart_view()
+    # Button to update chart after changing types
+    update_chart_button = tk.Button(
+        chart_window, text="Update Chart", command=update_chart
+    )
+    update_chart_button.pack()
 
+    canvas = FigureCanvasTkAgg(fig, master=chart_window)
+    canvas_widget = canvas.get_tk_widget()
     canvas_widget.pack(fill=tk.BOTH, expand=True)
+
+    update_chart()
 
 
 # Button to activate the chart
