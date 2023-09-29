@@ -1,3 +1,6 @@
+# This app saves your workout data and graphs it for you
+# Still in development
+
 import tkinter as tk
 from tkinter import ttk
 from tkinter.simpledialog import askstring
@@ -8,6 +11,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from dateutil import parser
 from collections import defaultdict
+import matplotlib.dates as mdates
 
 
 app = tk.Tk()
@@ -34,8 +38,8 @@ def load_exercise_types():
         }
 
 
+# The dropdown box that lists workout types
 options = load_exercise_types()
-
 type_entry = ttk.Combobox(app, values=list(options.keys()), state="readonly")
 type_entry.grid(row=1, column=1, padx=20)
 
@@ -146,15 +150,22 @@ settings_button = tk.Button(app, text="Settings", command=open_settings)
 settings_button.grid(row=2, column=1, pady=(0, 10))
 
 
-# Popout window that graphs the workouts by type
+# The chart
 def show_chart():
+    # Popout window that graphs the workouts by type
     chart_window = tk.Toplevel(app)
     chart_window.title("Chart")
     chart_window.geometry("600x500")
 
-    # Select the exercise type
+    # Select the exercise type + notice
     chart_type_label = tk.Label(chart_window, text="Select Exercise Type:")
     chart_type_label.pack()
+    notice = tk.Label(
+        chart_window, text="(Chart only works for workout types with 2 or more entries)"
+    )
+    notice.pack()
+
+    # Dropdown box for exercise type selection
     chart_type_var = tk.StringVar()
     chart_type_menu = ttk.Combobox(
         chart_window,
@@ -182,21 +193,12 @@ def show_chart():
         if selected_type in exercise_data:
             data_points = exercise_data[selected_type]
             dates, amounts = zip(*data_points)
-            if len(data_points) < 2:
-                # Add an empty list for x-axis labels when there are fewer than two workouts
-                plt.plot([], [], label=selected_type)
-                ax.text(
-                    0.5,
-                    0.5,
-                    "At least 2 workouts of this type are required",
-                    fontsize=12,
-                    ha="center",
-                    va="center",
-                )
-            else:
-                plt.plot(dates, amounts, label=selected_type)
+            plt.plot(dates, amounts, label=selected_type)
 
-        # The text of the graph like axis lables and legends
+        # Will add years soon, must first figure out everything design-wise
+        ax.xaxis.set_major_formatter(mdates.DateFormatter("%m-%d"))
+
+        # The text of the graph like axis labels and legends
         ax.set_xlabel("Date")
         ax.set_ylabel("Amount")
         ax.set_title(f"Your {selected_type} Over Time")
@@ -259,7 +261,7 @@ def remove_workout():
 
 
 # Save data (upon adding workout)
-def save_workout_data(self):
+def save_workout_data(workout_data):
     with open("workouts.json", "w") as file:
         json.dump(workout_data, file)
 
