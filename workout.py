@@ -12,6 +12,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from dateutil import parser
 from collections import defaultdict
 import matplotlib.dates as mdates
+from datetime import timedelta
 
 
 app = tk.Tk()
@@ -193,12 +194,29 @@ def show_chart():
         if selected_type in exercise_data:
             data_points = exercise_data[selected_type]
             dates, amounts = zip(*data_points)
-            plt.plot(dates, amounts, label=selected_type)
+        else:
+            # Empty workout types
+            dates, amounts = [], []
 
-        # Will add years soon, must first figure out everything design-wise
-        ax.xaxis.set_major_formatter(mdates.DateFormatter("%m-%d"))
+        # Convert and store the dates into a dictionary
+        date_range = [date.date() for date in dates]
+        min_date = min(date_range)
+        max_date = max(date_range)
+        all_dates = [
+            min_date + timedelta(days=i) for i in range((max_date - min_date).days + 1)
+        ]
+        amounts_by_date = dict(zip(date_range, amounts))
+
+        # Dates with no data gets assigned a 0 amount
+        zero_amounts = [amounts_by_date.get(date, 0) for date in all_dates]
+
+        # Plot the data
+        plt.plot(all_dates, zero_amounts, label=selected_type)
 
         # The text of the graph like axis labels and legends
+        ax.xaxis.set_major_formatter(
+            mdates.DateFormatter("%m-%d")
+        )  # Will add years after designing more
         ax.set_xlabel("Date")
         ax.set_ylabel("Amount")
         ax.set_title(f"Your {selected_type} Over Time")
