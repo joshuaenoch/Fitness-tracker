@@ -1,4 +1,5 @@
 # This app saves your workout data and graphs it for you
+# Only works on desktop windows
 # Still in development
 
 import tkinter as tk
