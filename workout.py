@@ -13,6 +13,7 @@ from dateutil import parser
 from collections import defaultdict
 import matplotlib.dates as mdates
 from datetime import timedelta
+import babel.numbers
 
 
 app = tk.Tk()
@@ -175,7 +176,6 @@ def show_chart():
         state="readonly",
     )
     chart_type_menu.pack(pady=(0, 10))
-    chart_type_menu.set("Jogging")
 
     # Load and add workouts by type
     exercise_data = defaultdict(list)
