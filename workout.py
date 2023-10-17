@@ -8,6 +8,8 @@ from tkinter.simpledialog import askstring
 from tkinter import simpledialog, messagebox
 from tkcalendar import DateEntry
 import json
+import matplotlib
+matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from dateutil import parser
@@ -15,7 +17,6 @@ from collections import defaultdict
 import matplotlib.dates as mdates
 from datetime import timedelta
 import babel.numbers
-
 
 app = tk.Tk()
 app.title("Fitness Tracker")
@@ -164,7 +165,7 @@ def show_chart():
     chart_type_label = tk.Label(chart_window, text="Select Exercise Type:")
     chart_type_label.pack()
     notice = tk.Label(
-        chart_window, text="(Chart only works for workout types with 2 or more entries)"
+        chart_window, text="(Chart only works for workout types with 2 or more dates)"
     )
     notice.pack()
 
@@ -188,7 +189,7 @@ def show_chart():
 
     fig, ax = plt.subplots(figsize=(6, 4))
 
-    # Plot/update chart
+    # Updates the chart with workouts from a specific type summed by date
     def update_chart():
         selected_type = chart_type_var.get()
         ax.clear()
@@ -206,24 +207,30 @@ def show_chart():
         all_dates = [
             min_date + timedelta(days=i) for i in range((max_date - min_date).days + 1)
         ]
-        amounts_by_date = dict(zip(date_range, amounts))
+        amounts_by_date = defaultdict(float)  # Use defaultdict to sum amounts for each date
 
-        # Dates with no data gets assigned a 0 amount
-        zero_amounts = [amounts_by_date.get(date, 0) for date in all_dates]
+        # Calculate the sum of workouts for each date
+        for date, amount in zip(date_range, amounts):
+            amounts_by_date[date] += amount
+
+        # Extract dates and their summed amounts
+        all_dates = list(amounts_by_date.keys())
+        summed_amounts = [amounts_by_date[date] for date in all_dates]
 
         # Plot the data
-        plt.plot(all_dates, zero_amounts, label=selected_type)
+        plt.plot(all_dates, summed_amounts, label=selected_type)
 
-        # The text of the graph like axis labels and legends
+        # The text of the graph such as axis labels and legends
         ax.xaxis.set_major_formatter(
             mdates.DateFormatter("%m-%d")
         )  # Will add years after designing more
         ax.set_xlabel("Date")
         ax.set_ylabel("Amount")
-        ax.set_title(f"Your {selected_type} Over Time")
+        ax.set_title(f"Total {selected_type} Over Time")
         ax.legend(loc="upper left")
 
         canvas.draw()
+
 
     # Button to update chart after changing types
     update_chart_button = tk.Button(
@@ -287,27 +294,26 @@ def save_workout_data(workout_data):
 
 # Add workouts
 def add_workout():
-    # Default values
-    amount = "Unknown"
-    date = "No date set"
-
     # Input values
     exercise_type = type_entry.get()
+    unit = options.get(exercise_type, "amount")
+    user_amount = duration_entry.get()
+    user_date = date_entry.get()
     if not exercise_type:
         # User must input exercise type
         messagebox.showerror("Error", "Please select a workout type.")
         return
-    unit = options.get(exercise_type, "amount")
-    user_amount = duration_entry.get()
-    if user_amount:
-        amount = user_amount
-    user_date = date_entry.get()
-    if user_date:
-        date = user_date
+    elif not user_amount:
+        # User must input exercise amount
+        messagebox.showerror("Error", "Please enter workout amount.")
+        return
+    elif not user_date:
+        messagebox.showerror("Error", "Please enter workout date.")
+        return
     workout_data.append(
-        {"date": date, "exercise_type": exercise_type, "amount": amount, "unit": unit}
+        {"date": user_date, "exercise_type": exercise_type, "amount": user_amount, "unit": unit}
     )
-    workout_display = f" {date} - {exercise_type} - {amount} {unit}\n"
+    workout_display = f" {user_date} - {exercise_type} - {user_amount} {unit}\n"  # Use user_date and user_amount
     workout_listbox.insert(tk.END, workout_display)
     save_workout_data(workout_data)
 
@@ -315,7 +321,6 @@ def add_workout():
     type_entry.set("")
     duration_entry.delete(0, tk.END)
     date_entry.delete(0, tk.END)
-
 
 # Add and remove workout buttons
 add_workout_button = tk.Button(app, text="Add Workout", command=add_workout)

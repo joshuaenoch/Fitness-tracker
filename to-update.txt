@@ -1,0 +1,1 @@
+To update your application, only replace the workout.exe file. Keep the .json files as is.
