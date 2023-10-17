@@ -207,7 +207,7 @@ def show_chart():
         all_dates = [
             min_date + timedelta(days=i) for i in range((max_date - min_date).days + 1)
         ]
-        amounts_by_date = defaultdict(float)  # Use defaultdict to sum amounts for each date
+        amounts_by_date = {date: 0 for date in all_dates}
 
         # Calculate the sum of workouts for each date
         for date, amount in zip(date_range, amounts):
@@ -340,3 +340,6 @@ def on_closing():
 app.protocol("WM_DELETE_WINDOW", on_closing)
 
 app.mainloop()
+
+app.mainloop()
+
